@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Chet For Devs</title>
+    <title>Simple Chat</title>
     <style>
         * {
             margin: 0;
@@ -131,6 +131,13 @@
             color: #fff;
             font-weight: 600;
             margin-right: 8px;
+            overflow: hidden;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .username {
@@ -149,6 +156,27 @@
 
         .connection-status.connected {
             background: #3ba55d;
+        }
+
+        .settings-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            color: #b9bbbe;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-left: 4px;
+            transition: all 0.15s;
+        }
+
+        .settings-btn:hover {
+            background: #3a3c42;
+            color: #dcddde;
         }
 
         .main-content {
@@ -215,6 +243,13 @@
             font-weight: 600;
             margin-right: 16px;
             flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .message-content {
@@ -256,6 +291,31 @@
             padding: 12px;
             display: flex;
             align-items: center;
+            gap: 8px;
+        }
+
+        .emoji-quick-select {
+            display: flex;
+            gap: 4px;
+        }
+
+        .emoji-quick-select.hidden {
+            display: none;
+        }
+
+        .emoji-btn {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+        .emoji-btn:hover {
+            background: #4e5058;
+            transform: scale(1.1);
         }
 
         .message-input {
@@ -279,7 +339,6 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: 500;
-            margin-left: 8px;
             transition: background 0.2s;
         }
 
@@ -294,6 +353,193 @@
         .send-btn:disabled {
             background: #4e5058;
             cursor: not-allowed;
+        }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .settings-modal {
+            background: #36393f;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid #202225;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #b9bbbe;
+            font-size: 24px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+        .close-btn:hover {
+            background: #3a3c42;
+            color: #dcddde;
+        }
+
+        .modal-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .settings-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            color: #b9bbbe;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .profile-picture-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .profile-picture-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 600;
+            font-size: 36px;
+            overflow: hidden;
+        }
+
+        .profile-picture-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .upload-btn {
+            background: #5865f2;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .upload-btn:hover {
+            background: #4752c4;
+        }
+
+        .remove-btn {
+            background: #ed4245;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .remove-btn:hover {
+            background: #c03537;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #202225;
+        }
+
+        .setting-label {
+            color: #dcddde;
+            font-size: 15px;
+        }
+
+        .setting-description {
+            color: #72767d;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #72767d;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: #3ba55d;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(20px);
         }
 
         ::-webkit-scrollbar {
@@ -313,16 +559,7 @@
             background: #1a1c1f;
         }
 
-        .debug-info {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            font-family: monospace;
+        #profilePictureInput {
             display: none;
         }
     </style>
@@ -331,7 +568,7 @@
     <div class="container">
         <div class="sidebar">
             <div class="server-header">
-                The Chet
+                My Server
             </div>
             <div class="channels" id="channelList">
                 <div class="channel active" data-channel="general">general</div>
@@ -348,6 +585,7 @@
                     <div class="username" id="usernameDisplay">User</div>
                     <div class="connection-status" id="connectionStatus"></div>
                 </div>
+                <button class="settings-btn" id="settingsBtn">⚙️</button>
             </div>
         </div>
 
@@ -359,6 +597,14 @@
             <div class="messages" id="messageArea"></div>
             <div class="input-area">
                 <div class="input-wrapper">
+                    <div class="emoji-quick-select hidden" id="emojiQuickSelect">
+                        <button class="emoji-btn" data-emoji="😀">😀</button>
+                        <button class="emoji-btn" data-emoji="🤣">🤣</button>
+                        <button class="emoji-btn" data-emoji="😭">😭</button>
+                        <button class="emoji-btn" data-emoji="🥹">🥹</button>
+                        <button class="emoji-btn" data-emoji="😡">😡</button>
+                        <button class="emoji-btn" data-emoji="😢">😢</button>
+                    </div>
                     <input 
                         type="text" 
                         class="message-input" 
@@ -371,10 +617,57 @@
         </div>
     </div>
 
-    <div class="debug-info" id="debugInfo"></div>
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="settings-modal">
+            <div class="modal-header">
+                <div class="modal-title">Settings</div>
+                <button class="close-btn" id="closeSettingsBtn">×</button>
+            </div>
+            <div class="modal-content">
+                <div class="settings-section">
+                    <div class="section-title">Profile Picture</div>
+                    <div class="profile-picture-section">
+                        <div class="profile-picture-preview" id="profilePicturePreview">
+                            <span id="profileInitial">U</span>
+                        </div>
+                        <input type="file" id="profilePictureInput" accept="image/*">
+                        <button class="upload-btn" id="uploadProfileBtn">Upload Picture</button>
+                        <button class="remove-btn" id="removeProfileBtn">Remove Picture</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-title">Chat Features</div>
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Quick Emoji Picker</div>
+                            <div class="setting-description">Show emoji buttons next to message input</div>
+                        </div>
+                        <div class="toggle-switch" id="emojiToggle">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="section-title">Notifications</div>
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Desktop Notifications</div>
+                            <div class="setting-description">Get notified when someone sends a message</div>
+                        </div>
+                        <div class="toggle-switch" id="notificationToggle">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Configuration - FIXED: Use correct WebSocket protocol
+        // Configuration
         const WS_URL = window.location.protocol === 'https:' 
             ? `wss://${window.location.host}` 
             : `ws://${window.location.hostname}:${window.location.port || 3000}`;
@@ -389,7 +682,10 @@
             connected: false,
             messages: {},
             users: [],
-            typingUsers: {}
+            typingUsers: {},
+            profilePicture: null,
+            emojiPickerEnabled: false,
+            notificationsEnabled: false
         };
 
         // DOM Elements
@@ -403,8 +699,36 @@
         const connectionStatus = document.getElementById('connectionStatus');
         const userList = document.getElementById('userList');
         const typingIndicator = document.getElementById('typingIndicator');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const profilePictureInput = document.getElementById('profilePictureInput');
+        const uploadProfileBtn = document.getElementById('uploadProfileBtn');
+        const removeProfileBtn = document.getElementById('removeProfileBtn');
+        const profilePicturePreview = document.getElementById('profilePicturePreview');
+        const profileInitial = document.getElementById('profileInitial');
+        const emojiToggle = document.getElementById('emojiToggle');
+        const notificationToggle = document.getElementById('notificationToggle');
+        const emojiQuickSelect = document.getElementById('emojiQuickSelect');
 
         let typingTimeout;
+
+        // Load settings from memory
+        function loadSettings() {
+            const savedPicture = state.profilePicture;
+            if (savedPicture) {
+                updateProfilePicture(savedPicture);
+            }
+
+            if (state.emojiPickerEnabled) {
+                emojiToggle.classList.add('active');
+                emojiQuickSelect.classList.remove('hidden');
+            }
+
+            if (state.notificationsEnabled) {
+                notificationToggle.classList.add('active');
+            }
+        }
 
         // Initialize
         function init() {
@@ -412,7 +736,9 @@
             state.username = savedUsername;
             usernameDisplay.textContent = savedUsername;
             userAvatar.textContent = savedUsername.charAt(0).toUpperCase();
+            profileInitial.textContent = savedUsername.charAt(0).toUpperCase();
 
+            loadSettings();
             connectWebSocket();
         }
 
@@ -434,15 +760,11 @@
                 connectionStatus.classList.add('connected');
                 sendBtn.disabled = false;
                 
-                // Join server
-                const joinMsg = {
+                send({
                     type: 'join',
                     username: state.username
-                };
-                console.log('Sending join message:', joinMsg);
-                send(joinMsg);
+                });
 
-                // Get history for current channel
                 send({
                     type: 'getHistory',
                     channel: state.currentChannel
@@ -464,8 +786,6 @@
                 state.connected = false;
                 connectionStatus.classList.remove('connected');
                 sendBtn.disabled = true;
-                
-                // Reconnect after 3 seconds
                 setTimeout(connectWebSocket, 3000);
             };
 
@@ -488,6 +808,11 @@
                 case 'message':
                     console.log('Received chat message:', data.message);
                     addMessageToChannel(data.message);
+                    
+                    // Show notification if enabled and not from current user
+                    if (state.notificationsEnabled && data.message.author !== state.username) {
+                        showNotification(data.message);
+                    }
                     break;
                 case 'history':
                     console.log(`Loaded ${data.messages.length} messages for #${data.channel}`);
@@ -580,7 +905,14 @@
 
                 const avatar = document.createElement('div');
                 avatar.className = 'message-avatar';
-                avatar.textContent = msg.author.charAt(0).toUpperCase();
+                
+                if (state.profilePicture && msg.author === state.username) {
+                    const img = document.createElement('img');
+                    img.src = state.profilePicture;
+                    avatar.appendChild(img);
+                } else {
+                    avatar.textContent = msg.author.charAt(0).toUpperCase();
+                }
 
                 const content = document.createElement('div');
                 content.className = 'message-content';
@@ -693,7 +1025,6 @@
                 }
             });
 
-            // Get history if not loaded
             if (!state.messages[channel]) {
                 send({
                     type: 'getHistory',
@@ -707,39 +1038,20 @@
             updateTypingIndicator();
         }
 
-        // Event listeners
-        sendBtn.addEventListener('click', (e) => {
-            console.log('Send button clicked');
-            e.preventDefault();
-            addMessage();
-        });
-        
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                console.log('Enter key pressed');
-                e.preventDefault();
-                addMessage();
-            }
-        });
+        // Profile picture functions
+        function updateProfilePicture(base64Image) {
+            state.profilePicture = base64Image;
+            
+            // Update sidebar avatar
+            userAvatar.innerHTML = `<img src="${base64Image}" alt="Profile">`;
+            
+            // Update settings preview
+            profilePicturePreview.innerHTML = `<img src="${base64Image}" alt="Profile">`;
+            
+            // Re-render messages to update current user's avatar
+            renderMessages();
+        }
 
-        messageInput.addEventListener('input', () => {
-            if (messageInput.value.length > 0) {
-                startTyping();
-            } else {
-                stopTyping();
-            }
-        });
-
-        channelList.addEventListener('click', (e) => {
-            const channel = e.target.closest('.channel');
-            if (channel) {
-                switchChannel(channel.dataset.channel);
-            }
-        });
-
-        // Initialize app
-        console.log('Initializing chat application...');
-        init();
-    </script>
-</body>
-</html>
+        // Notification function
+        function showNotification(message) {
+            if (Notification.permission === 'granted') {
