@@ -4,7 +4,6 @@ const WebSocket = require('ws');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
-const FileStore = require('session-file-store')(session);
 const db = require('./database.js'); // Assumes database.js is in the same folder
 
 const app = express();
@@ -16,7 +15,6 @@ const BCRYPT_SALT_ROUNDS = 12;
 
 // --- Session Configuration ---
 const sessionParser = session({
-    store: new FileStore({ path: './sessions', logFn: function(){} }),
     secret: 'a_very_secret_key_change_this_later',
     resave: false,
     saveUninitialized: false,
