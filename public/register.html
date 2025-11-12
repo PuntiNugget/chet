@@ -1,1 +1,48 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+    <style> /* (Same styles as login.html) */
+        body { font-family: -apple-system, sans-serif; background: #36393f; color: #dcddde; display: grid; place-items: center; min-height: 100vh; }
+        .form-container { background: #2f3136; padding: 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        h2 { text-align: center; margin-bottom: 16px; }
+        div { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: 500; }
+        input[type="text"], input[type="password"] { width: 300px; background: #40444b; border: none; color: #dcddde; padding: 10px; border-radius: 4px; }
+        button { width: 100%; background: #5865f2; color: #fff; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        button:hover { background: #4752c4; }
+        .link { text-align: center; margin-top: 12px; }
+        .link a { color: #00a8fc; text-decoration: none; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+        input[type="checkbox"] { width: auto; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Create an Account</h2>
+        <form action="/register" method="POST">
+            <div>
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_temporary" value="true">
+                    Create as temporary account (expires in 1 hour)
+                </label>
+            </div>
+            <div>
+                <button type="submit">Register</button>
+            </div>
+        </form>
+        <div class="link">
+            Already have an account? <a href="/login">Login here</a>
+        </div>
+    </div>
+</body>
+</html>
