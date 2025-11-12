@@ -74,12 +74,19 @@ app.post('/api/login', (req, res) => {
             console.log(`Login failed: Incorrect password for ${username}.`);
             return res.status(401).json({ success: false, message: 'Invalid username or password.' });
         }
-
-        // Success! Create session
+        // Success! Create session AND FORCE SAVE
         console.log(`Login successful for ${username}. Creating session.`);
         req.session.userId = user.id;
         req.session.username = user.username;
-        res.json({ success: true, username: user.username });
+
+        req.session.save((err) => {
+            if (err) {
+                console.error("!!! SESSION SAVE ERROR: ", err.message);
+                return res.status(500).json({ success: false, message: 'Session save error.' });
+            }
+            console.log(`Session saved for ${username}. Sending response.`);
+            res.json({ success: true, username: user.username });
+        });
     });
 });
 
