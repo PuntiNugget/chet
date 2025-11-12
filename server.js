@@ -2,21 +2,21 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
-const bcrypt = require('bcrypt'); // --- NEW ---
-const session = require('express-session'); // --- NEW ---
-const FileStore = require('session-file-store')(session); // --- NEW ---
-const db = require('./database.js'); // --- NEW ---
+const bcrypt = require('bcrypt');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
+const db = require('./database.js'); // Assumes database.js is in the same folder
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ noServer: true }); // --- MODIFIED ---
+const wss = new WebSocket.Server({ noServer: true });
 
 const PORT = process.env.PORT || 3000;
 const BCRYPT_SALT_ROUNDS = 12;
 
-// --- NEW --- (Session Configuration)
+// --- Session Configuration ---
 const sessionParser = session({
-    store: new FileStore({ path: './sessions' }),
+    store: new FileStore({ path: './sessions', logFn: function(){} }),
     secret: 'a_very_secret_key_change_this_later',
     resave: false,
     saveUninitialized: false,
@@ -25,94 +25,83 @@ const sessionParser = session({
     }
 });
 
-// Middleware
+// --- Middleware ---
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // --- NEW --- (For HTML forms)
-app.use(sessionParser); // --- NEW --- (Use sessions)
-app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
+app.use(sessionParser);
+// Serve the 'public' folder (which will just contain index.html)
+app.use(express.static('public')); 
 
-// In-memory storage
-const channels = {
-    general: [],
-    random: [],
-    gaming: []
-};
-
-const users = new Map(); // WebSocket -> user info
-
-// --- NEW --- (Authentication Middleware)
-// This function checks if a user is logged in before letting them see a page
-function requireLogin(req, res, next) {
-    if (!req.session.userId) {
-        return res.redirect('/login'); // Not logged in, send to login
-    }
-    next(); // Logged in, continue
-}
-
-// --- NEW --- (Auth Routes: Login, Register, Logout)
-
-// Serve the chat app (protected)
-app.get('/', requireLogin, (req, res) => {
-    // req.session.username is available because of requireLogin
+// --- Main App Route ---
+// Serves your single-page app
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Serve the login page
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+// --- API ROUTES (for Login/Register/Logout) ---
+
+// API: Check if user is already logged in
+app.get('/api/me', (req, res) => {
+    if (!req.session.userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+    res.json({ username: req.session.username });
 });
 
-// Handle login logic
-app.post('/login', (req, res) => {
+// API: Handle login logic
+app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
 
     db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
+        // BETTER LOGGING
         if (err) {
-            return res.status(500).send("Server error");
+            console.error("!!! LOGIN DB (SELECT) ERROR: ", err.message);
+            return res.status(500).json({ success: false, message: 'Server error. Check logs.' });
         }
         
-        // 1. Check: User exists
         if (!user) {
-            return res.status(401).send('Invalid username or password. <a href="/login">Try again</a>');
+            console.log(`Login failed: User ${username} not found.`);
+            return res.status(401).json({ success: false, message: 'Invalid username or password.' });
         }
-
-        // 2. Check: Account hasn't expired (if temporary)
+        
         if (user.expires_at && new Date(user.expires_at) < new Date()) {
-            return res.status(401).send('This temporary account has expired. <a href="/login">Try again</a>');
+            console.log(`Login failed: Temporary user ${username} has expired.`);
+            return res.status(401).json({ success: false, message: 'This temporary account has expired.' });
         }
-
-        // 3. Check: Password is correct
+        
         const passwordMatch = await bcrypt.compare(password, user.password_hash);
         if (!passwordMatch) {
-            return res.status(401).send('Invalid username or password. <a href="/login">Try again</a>');
+            console.log(`Login failed: Incorrect password for ${username}.`);
+            return res.status(401).json({ success: false, message: 'Invalid username or password.' });
         }
 
-        // 4. Success! Create session
+        // Success! Create session
+        console.log(`Login successful for ${username}. Creating session.`);
         req.session.userId = user.id;
         req.session.username = user.username;
-        res.redirect('/'); // Redirect to the chat app
+        res.json({ success: true, username: user.username });
     });
 });
 
-// Serve the register page
-app.get('/register', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'register.html'));
-});
-
-// Handle register logic
-app.post('/register', async (req, res) => {
+// API: Handle register logic
+app.post('/api/register', (req, res) => {
     const { username, password, is_temporary } = req.body;
 
     // 1. Check: Does user already exist?
     db.get("SELECT * FROM users WHERE username = ?", [username], async (err, existingUser) => {
+        // NEW: Check for database errors first!
         if (err) {
-            return res.status(500).send("Server error");
+            console.error("!!! REGISTER DB (SELECT) ERROR: ", err.message);
+            return res.status(500).json({ success: false, message: 'Server error. Check logs.' });
         }
+        
         if (existingUser) {
-            return res.status(400).send('Username already exists. <a href="/register">Try again</a>');
+            console.log(`Registration blocked: ${username} already exists.`);
+            return res.status(400).json({ success: false, message: 'Username already exists.' });
         }
 
         // 2. Create: Hash password and set expiration
+        console.log(`Registering new user: ${username}`);
         const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
         
         let expirationDate = null;
@@ -120,6 +109,7 @@ app.post('/register', async (req, res) => {
             const now = new Date();
             now.setHours(now.getHours() + 1); // Expires in 1 hour
             expirationDate = now.toISOString();
+            console.log(`User ${username} is temporary.`);
         }
 
         // 3. Save: Add to database
@@ -127,73 +117,68 @@ app.post('/register', async (req, res) => {
             "INSERT INTO users (username, password_hash, expires_at) VALUES (?, ?, ?)",
             [username, passwordHash, expirationDate],
             (err) => {
+                // NEW: Check for database errors on INSERT!
                 if (err) {
-                    return res.status(500).send("Error creating account");
+                    console.error("!!! REGISTER DB (INSERT) ERROR: ", err.message);
+                    return res.status(500).json({ success: false, message: 'Could not create account. Check logs.' });
                 }
-                res.redirect('/login'); // Registration successful, redirect to login
+                
+                // Success!
+                console.log(`Successfully created user: ${username}`);
+                res.json({ success: true, message: 'Account created! Please log in.' });
             }
         );
     });
 });
 
-// Handle logout
-app.get('/logout', (req, res) => {
+// API: Handle logout
+app.post('/api/logout', (req, res) => {
+    console.log(`Logging out user: ${req.session.username}`);
     req.session.destroy((err) => {
         if (err) {
-            return res.redirect('/');
+            console.error("!!! LOGOUT ERROR: ", err.message);
+            return res.status(500).json({ success: false, message: 'Could not log out.' });
         }
-        res.clearCookie('connect.sid'); // Clear the session cookie
-        res.redirect('/login');
+        res.clearCookie('connect.sid');
+        res.json({ success: true });
     });
 });
 
-// --- NEW --- (Secure WebSocket Handshake)
-// This logic runs *before* the 'connection' event
-// It checks the session to see if the user is logged in
+
+// --- Secure WebSocket Handshake ---
 server.on('upgrade', (request, socket, head) => {
     console.log('Parsing session from upgrade request...');
-    
-    // Pass the request to the session parser
     sessionParser(request, {}, () => {
-        // 1. Check if the user is logged in
         if (!request.session.userId) {
-            console.log('WebSocket upgrade rejected: No session');
+            console.log('WebSocket upgrade rejected: No session/unauthorized');
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
             socket.destroy();
             return;
         }
 
         console.log(`WebSocket upgrade accepted for user: ${request.session.username}`);
-
-        // 2. User is logged in, complete the WebSocket handshake
         wss.handleUpgrade(request, socket, head, (ws) => {
-            // Attach the user info *to* the WebSocket object
             ws.userId = request.session.userId;
             ws.username = request.session.username;
-            
-            // Now, emit the 'connection' event
             wss.emit('connection', ws, request);
         });
     });
 });
 
-// WebSocket connection handler
+// --- WebSocket Connection Handler ---
 wss.on('connection', (ws) => {
-    // --- MODIFIED ---
-    // We already know who the user is, thanks to the 'upgrade' logic!
-    console.log(`New client connected: ${ws.username}`);
+    console.log(`New client connected: ${ws.username} (ID: ${ws.userId})`);
     
     // Send immediate confirmation
     ws.send(JSON.stringify({
         type: 'connected',
         message: 'Connected to server',
-        username: ws.username // --- NEW --- Send the user their *real* username
+        username: ws.username // Send the user their *real* username
     }));
     
     ws.on('message', (data) => {
         try {
             const message = JSON.parse(data.toString());
-            // --- MODIFIED --- Pass 'ws' so we know the user
             handleMessage(ws, message); 
         } catch (error) {
             console.error('Error parsing message:', error);
@@ -201,7 +186,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        const user = users.get(ws); // Get user from our *chat* map
+        const user = users.get(ws);
         if (user) {
             console.log(`User ${user.username} disconnected`);
             users.delete(ws);
@@ -212,108 +197,73 @@ wss.on('connection', (ws) => {
     ws.on('error', (console.error));
 });
 
-// Handle different message types
-function handleMessage(ws, message) {
-    // --- MODIFIED --- We get the user from 'ws', not the message
-    const user = {
-        username: ws.username,
-        id: ws.userId
-    };
+// --- (Chat logic) ---
+const users = new Map(); // WebSocket -> user info
+const channels = {
+    general: [],
+    random: [],
+    gaming: []
+};
 
+function handleMessage(ws, message) {
+    const user = { username: ws.username, id: ws.userId };
     switch (message.type) {
         case 'join':
-            handleJoin(ws, user); // --- MODIFIED ---
+            handleJoin(ws, user);
             break;
         case 'message':
-            handleChatMessage(ws, user, message); // --- MODIFIED ---
+            handleChatMessage(ws, user, message);
             break;
         case 'getHistory':
             handleGetHistory(ws, message);
             break;
         case 'typing':
-            handleTyping(ws, user, message); // --- MODIFIED ---
+            handleTyping(ws, user, message);
             break;
     }
 }
 
-// User joins
-function handleJoin(ws, user) { // --- MODIFIED ---
-    // We no longer need the 'username' from the message
-    console.log(`User joining: ${user.username}`);
-    
-    users.set(ws, {
-        username: user.username,
-        id: user.id
-    });
-
-    // Send welcome message
-    ws.send(JSON.stringify({
-        type: 'joined',
-        username: user.username,
-        channels: Object.keys(channels)
-    }));
-
+function handleJoin(ws, user) {
+    console.log(`User ${user.username} is joining the chat room.`);
+    users.set(ws, { username: user.username, id: user.id });
+    ws.send(JSON.stringify({ type: 'joined', username: user.username, channels: Object.keys(channels) }));
     broadcastUserList();
 }
 
-// Handle chat messages
-function handleChatMessage(ws, user, message) { // --- MODIFIED ---
+function handleChatMessage(ws, user, message) {
     const { channel, text } = message;
-    console.log(`Message from ${user.username} in #${channel}: ${text}`);
-    
     const chatMessage = {
         id: generateId(),
-        author: user.username, // --- SECURE ---
+        author: user.username,
         text,
         channel,
         timestamp: new Date().toISOString()
     };
-
     if (channels[channel]) {
         channels[channel].push(chatMessage);
         if (channels[channel].length > 100) channels[channel].shift();
     }
-
     broadcast({ type: 'message', message: chatMessage });
 }
 
-// Get channel history (no change)
 function handleGetHistory(ws, message) {
     const { channel } = message;
     if (channels[channel]) {
-        ws.send(JSON.stringify({
-            type: 'history',
-            channel,
-            messages: channels[channel]
-        }));
+        ws.send(JSON.stringify({ type: 'history', channel, messages: channels[channel] }));
     }
 }
 
-// Handle typing indicator
-function handleTyping(ws, user, message) { // --- MODIFIED ---
+function handleTyping(ws, user, message) {
     const { channel, isTyping } = message;
-    
-    broadcast({
-        type: 'typing',
-        username: user.username, // --- SECURE ---
-        channel,
-        isTyping
-    }, ws);
+    broadcast({ type: 'typing', username: user.username, channel, isTyping }, ws);
 }
 
-// (Rest of your functions: broadcastUserList, broadcast, generateId, API routes, health check)
-// ... (They can stay mostly the same) ...
-
-// Broadcast user list
 function broadcastUserList() {
     const userList = Array.from(users.values()).map(u => u.username);
-    broadcast({
-        type: 'userList',
-        users: userList
-    });
+    console.log(`Broadcasting user list: ${userList.join(', ')}`);
+    broadcast({ type: 'userList', users: userList });
 }
 
-// Broadcast to all clients (except sender if specified)
 function broadcast(message, excludeWs = null) {
     const data = JSON.stringify(message);
     wss.clients.forEach((client) => {
@@ -327,10 +277,7 @@ function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// (Your API and health routes - unchanged)
-// ...
-
-// Start server
+// --- Start Server ---
 server.listen(PORT, () => {
     console.log(`=================================`);
     console.log(`Server running on http://localhost:${PORT}`);
